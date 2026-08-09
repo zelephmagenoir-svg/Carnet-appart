@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="theme-color" content="#1C2333" />
+<title>Carnet d'appart</title>
+<style>
+  :root {
+    --ink: #1C2333;
+    --paper: #F6F1E4;
+    --paper-input: #FFFDF7;
+    --paper-border: #DCD3B8;
+    --muted: #8A8368;
+    --text: #2B2B24;
+    --accent: #B84A3E;
+    --accent-text: #FBF4E6;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; background: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  body { min-height: 100vh; padding-bottom: env(safe-area-inset-bottom); }
+  .wrap { max-width: 480px; margin: 0 auto; padding-bottom: 110px; }
+  header { padding: 24px 20px 12px; position: sticky; top: 0; background: var(--ink); z-index: 10; }
+  header .row { display: flex; align-items: baseline; justify-content: space-between; }
+  h1 { font-family: 'Courier New', monospace; letter-spacing: 0.02em; font-size: 24px; font-weight: 700; color: #fff; margin: 0; }
+  .count { font-size: 14px; color: #8A93AD; }
+  .filters { display: flex; gap: 8px; margin-top: 12px; overflow-x: auto; padding-bottom: 4px; }
+  .chip { flex-shrink: 0; padding: 7px 13px; border-radius: 999px; font-size: 14px; border: 1px solid #3A425A; background: transparent; color: #B8C0D6; white-space: nowrap; }
+  .chip.active-all { background: var(--paper); color: var(--text); border-color: var(--paper); }
+  main { padding: 0 20px; }
+  .empty { text-align: center; padding: 64px 0; color: #8A93AD; }
+  .card { position: relative; background: var(--paper); border-radius: 14px; margin-bottom: 16px; overflow: hidden; box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 4px 14px rgba(20,24,35,0.10); }
+  .perf { display: flex; justify-content: space-between; padding: 8px 12px 0; }
+  .perf span { width: 4px; height: 4px; border-radius: 4px; background: #E4DBC0; }
+  .card-body { display: flex; gap: 12px; padding: 12px; }
+  .thumb { flex-shrink: 0; width: 76px; height: 76px; border-radius: 10px; overflow: hidden; background: #EAE2CB; display: flex; align-items: center; justify-content: center; }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .card-main { flex: 1; min-width: 0; }
+  .card-top { display: flex; justify-content: space-between; gap: 8px; }
+  .card-title { font-weight: 600; color: var(--text); margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .del-btn { flex-shrink: 0; background: none; border: none; padding: 4px; color: #B0A99A; }
+  .rent { font-size: 14px; color: var(--muted); margin-top: 2px; }
+  .links { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .pill { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; padding: 5px 9px; border-radius: 999px; text-decoration: none; }
+  .pill.tel { background: #E4EFE1; color: #3C5A38; }
+  .pill.url { background: #E4E8EF; color: #33415C; }
+  .notes { padding: 0 12px 8px; font-size: 14px; color: #5C5847; }
+  .status-row { display: flex; gap: 6px; padding: 0 12px 12px; flex-wrap: wrap; }
+  .status-btn { padding: 5px 10px; border-radius: 999px; font-size: 12px; font-weight: 500; background: transparent; }
+  .stamp { position: absolute; top: 12px; right: 12px; transform: rotate(6deg); padding: 2px 8px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.9; }
+  .fab { position: fixed; z-index: 40; bottom: 24px; right: 24px; width: 56px; height: 56px; border-radius: 999px; background: var(--accent); color: var(--accent-text); border: none; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 20px rgba(184,74,62,0.4); }
+  .sheet-overlay { position: fixed; inset: 0; background: rgba(20,24,35,0.55); z-index: 50; display: none; align-items: flex-end; justify-content: center; }
+  .sheet-overlay.open { display: flex; }
+  .sheet { width: 100%; max-width: 480px; max-height: 88vh; background: var(--paper); border-radius: 18px 18px 0 0; overflow: hidden; display: flex; flex-direction: column; }
+  .sheet-handle { display: flex; justify-content: center; padding: 8px 0 4px; }
+  .sheet-handle span { width: 40px; height: 4px; border-radius: 4px; background: #C9C0A4; }
+  .sheet-content { overflow-y: auto; padding: 4px 20px 28px; }
+  .sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .sheet-head h2 { font-family: 'Courier New', monospace; letter-spacing: 0.03em; text-transform: uppercase; font-size: 18px; color: var(--text); margin: 0; }
+  .close-btn { background: none; border: none; padding: 4px; color: #5C5847; }
+  .photo-btn { width: 100%; margin-bottom: 16px; border-radius: 12px; border: 2px dashed var(--paper-border); background: #EAE2CB; display: flex; align-items: center; justify-content: center; height: 100px; color: var(--muted); overflow: hidden; }
+  .photo-btn.has-photo { height: 160px; background: transparent; }
+  .photo-btn img { width: 100%; height: 100%; object-fit: cover; }
+  .field { width: 100%; border-radius: 10px; padding: 12px; font-size: 16px; background: var(--paper-input); border: 1px solid var(--paper-border); color: var(--text); margin-bottom: 12px; font-family: inherit; }
+  textarea.field { resize: none; }
+  .status-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 4px 0 8px; }
+  .status-choices { display: flex; gap: 8px; flex-wrap: wrap; }
+  .status-choice { padding: 8px 13px; border-radius: 999px; font-size: 14px; font-weight: 500; background: transparent; }
+  .save-btn { width: 100%; margin-top: 20px; padding: 13px; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; background: #D8D0B8; color: #FBF4E6; opacity: 0.7; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .save-btn.enabled { background: var(--accent); opacity: 1; }
+  svg { display: block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="row">
+      <h1>Carnet d'appart</h1>
+      <span class="count" id="count"></span>
+    </div>
+    <div class="filters" id="filters"></div>
+  </header>
+  <main><div id="list"></div></main>
+</div>
+
+<button class="fab" id="fabBtn" aria-label="Ajouter une fiche">
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FBF4E6" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+</button>
+
+<div class="sheet-overlay" id="overlay">
+  <div class="sheet">
+    <div class="sheet-handle"><span></span></div>
+    <div class="sheet-content">
+      <div class="sheet-head">
+        <h2>Nouvelle fiche</h2>
+        <button class="close-btn" id="closeBtn">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5C5847" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <button class="photo-btn" id="photoBtn">
+        <span id="photoPlaceholder" style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8A8368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <span style="font-size:14px;">Ajouter une photo</span>
+        </span>
+        <img id="photoPreview" style="display:none;" />
+      </button>
+      <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none;" />
+
+      <input class="field" id="fTitre" placeholder="Adresse ou nom de l'annonce" />
+      <input class="field" id="fTel" inputmode="tel" placeholder="Numéro de téléphone" />
+      <input class="field" id="fUrl" inputmode="url" placeholder="Lien de l'annonce" />
+      <input class="field" id="fLoyer" inputmode="numeric" placeholder="Loyer (€, optionnel)" />
+      <textarea class="field" id="fNotes" rows="2" placeholder="Notes (optionnel)"></textarea>
+
+      <div class="status-label">Statut</div>
+      <div class="status-choices" id="statusChoices"></div>
+
+      <button class="save-btn" id="saveBtn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+        Enregistrer
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STATUSES = [
+  { id: "a_voir", label: "À visiter", color: "#D9A441", ink: "#4A3A14" },
+  { id: "visite", label: "Visité", color: "#8FA98C", ink: "#28331F" },
+  { id: "relance", label: "Relance", color: "#C98A5E", ink: "#3A230F" },
+  { id: "refuse", label: "Refusé", color: "#B0A99A", ink: "#39362E" },
+];
+const STORE_KEY = "carnet_appart_items";
+const statusOf = id => STATUSES.find(s => s.id === id) || STATUSES[0];
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+function load() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; }
+  catch { return []; }
+}
+function save(items) {
+  localStorage.setItem(STORE_KEY, JSON.stringify(items));
+}
+
+let items = load();
+let filter = "tous";
+let currentPhoto = null;
+
+function escapeHtml(s) {
+  return (s || "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}
+
+function renderFilters() {
+  const el = document.getElementById("filters");
+  let html = `<button class="chip ${filter==='tous' ? 'active-all' : ''}" data-filter="tous">Tous</button>`;
+  STATUSES.forEach(s => {
+    const active = filter === s.id;
+    html += `<button class="chip" data-filter="${s.id}" style="background:${active ? s.color : 'transparent'};border-color:${s.color};color:${active ? s.ink : '#B8C0D6'}">${s.label}</button>`;
+  });
+  el.innerHTML = html;
+  el.querySelectorAll("[data-filter]").forEach(btn => {
+    btn.onclick = () => { filter = btn.dataset.filter; renderAll(); };
+  });
+}
+
+function renderList() {
+  const el = document.getElementById("list");
+  document.getElementById("count").textContent = items.length ? `${items.length} fiche${items.length>1?'s':''}` : "";
+  const filtered = items.filter(i => filter === "tous" || i.statut === filter);
+
+  if (!filtered.length) {
+    el.innerHTML = `<div class="empty">${items.length===0 ? "Aucune fiche pour l'instant." : "Rien dans ce filtre."}</div>`;
+    return;
+  }
+
+  el.innerHTML = filtered.map(item => {
+    const s = statusOf(item.statut);
+    const telClean = (item.tel || "").replace(/[^\d+]/g, "");
+    const statusBtns = STATUSES.map(st => `
+      <button class="status-btn" data-set-status="${item.id}" data-status="${st.id}"
+        style="border:1px solid ${st.color};background:${item.statut===st.id ? st.color : 'transparent'};color:${item.statut===st.id ? st.ink : '#8A8368'}">
+        ${st.label}
+      </button>`).join("");
+    return `
+      <div class="card">
+        <div class="perf">${'<span></span>'.repeat(10)}</div>
+        <div class="card-body">
+          <div class="thumb">
+            ${item.photo ? `<img src="${item.photo}" />` : `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#B7AE8E" stroke-width="2"><path d="M3 12l9-9 9 9"/><path d="M9 21V12h6v9"/></svg>`}
+          </div>
+          <div class="card-main">
+            <div class="card-top">
+              <p class="card-title">${escapeHtml(item.titre)}</p>
+              <button class="del-btn" data-delete="${item.id}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B0A99A" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"/></svg>
+              </button>
+            </div>
+            ${item.loyer ? `<div class="rent">${escapeHtml(item.loyer)} €/mois</div>` : ""}
+            <div class="links">
+              ${item.tel ? `<a class="pill tel" href="tel:${telClean}">📞 ${escapeHtml(item.tel)}</a>` : ""}
+              ${item.url ? `<a class="pill url" href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">🔗 Annonce</a>` : ""}
+            </div>
+          </div>
+        </div>
+        ${item.notes ? `<div class="notes">${escapeHtml(item.notes)}</div>` : ""}
+        <div class="status-row">${statusBtns}</div>
+        <div class="stamp" style="border:1.5px solid ${s.color};color:${s.ink}">${s.label}</div>
+      </div>`;
+  }).join("");
+
+  el.querySelectorAll("[data-delete]").forEach(btn => {
+    btn.onclick = () => {
+      items = items.filter(i => i.id !== btn.dataset.delete);
+      save(items); renderAll();
+    };
+  });
+  el.querySelectorAll("[data-set-status]").forEach(btn => {
+    btn.onclick = () => {
+      items = items.map(i => i.id === btn.dataset.setStatus ? { ...i, statut: btn.dataset.status } : i);
+      save(items); renderAll();
+    };
+  });
+}
+
+function renderAll() { renderFilters(); renderList(); }
+
+function renderStatusChoices() {
+  const el = document.getElementById("statusChoices");
+  el.innerHTML = STATUSES.map(s => `
+    <button class="status-choice" data-choose-status="${s.id}"
+      style="border:1.5px solid ${s.color};background:${s.id===currentStatus ? s.color : 'transparent'};color:${s.id===currentStatus ? s.ink : '#4A4636'}">
+      ${s.label}
+    </button>`).join("");
+  el.querySelectorAll("[data-choose-status]").forEach(btn => {
+    btn.onclick = () => { currentStatus = btn.dataset.chooseStatus; renderStatusChoices(); };
+  });
+}
+
+let currentStatus = "a_voir";
+
+function resetForm() {
+  document.getElementById("fTitre").value = "";
+  document.getElementById("fTel").value = "";
+  document.getElementById("fUrl").value = "";
+  document.getElementById("fLoyer").value = "";
+  document.getElementById("fNotes").value = "";
+  currentStatus = "a_voir";
+  currentPhoto = null;
+  document.getElementById("photoPreview").style.display = "none";
+  document.getElementById("photoPlaceholder").style.display = "flex";
+  document.getElementById("photoBtn").classList.remove("has-photo");
+  renderStatusChoices();
+  updateSaveBtn();
+}
+
+function updateSaveBtn() {
+  const btn = document.getElementById("saveBtn");
+  const ok = document.getElementById("fTitre").value.trim().length > 0;
+  btn.classList.toggle("enabled", ok);
+}
+
+function compressImage(dataUrl, maxDim, quality) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > height && width > maxDim) { height = Math.round(height * maxDim / width); width = maxDim; }
+      else if (height > maxDim) { width = Math.round(width * maxDim / height); height = maxDim; }
+      const canvas = document.createElement("canvas");
+      canvas.width = width; canvas.height = height;
+      canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
+
+document.getElementById("photoBtn").onclick = () => document.getElementById("fileInput").click();
+document.getElementById("fileInput").onchange = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async () => {
+    const compressed = await compressImage(reader.result, 640, 0.72);
+    currentPhoto = compressed || reader.result;
+    const img = document.getElementById("photoPreview");
+    img.src = currentPhoto;
+    img.style.display = "block";
+    document.getElementById("photoPlaceholder").style.display = "none";
+    document.getElementById("photoBtn").classList.add("has-photo");
+  };
+  reader.readAsDataURL(file);
+};
+
+["fTitre"].forEach(id => document.getElementById(id).addEventListener("input", updateSaveBtn));
+
+document.getElementById("saveBtn").onclick = () => {
+  const titre = document.getElementById("fTitre").value.trim();
+  if (!titre) return;
+  items = [{
+    id: uid(),
+    titre,
+    tel: document.getElementById("fTel").value.trim(),
+    url: document.getElementById("fUrl").value.trim(),
+    loyer: document.getElementById("fLoyer").value.trim(),
+    notes: document.getElementById("fNotes").value.trim(),
+    statut: currentStatus,
+    photo: currentPhoto,
+    createdAt: Date.now(),
+  }, ...items];
+  save(items);
+  closeSheet();
+  renderAll();
+};
+
+function openSheet() { resetForm(); document.getElementById("overlay").classList.add("open"); }
+function closeSheet() { document.getElementById("overlay").classList.remove("open"); }
+
+document.getElementById("fabBtn").onclick = openSheet;
+document.getElementById("closeBtn").onclick = closeSheet;
+document.getElementById("overlay").onclick = (e) => { if (e.target.id === "overlay") closeSheet(); };
+
+renderAll();
+</script>
+</body>
+</html>
