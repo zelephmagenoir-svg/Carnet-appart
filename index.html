@@ -371,6 +371,9 @@ function renderList() {
 
   el.querySelectorAll("[data-delete]").forEach(btn => {
     btn.onclick = async () => {
+      const item = items.find(i => i.id === btn.dataset.delete);
+      const nom = item ? item.titre : "cette fiche";
+      if (!confirm(`Supprimer "${nom}" ? Cette action est définitive.`)) return;
       try { await deleteDoc(doc(db, "fiches", btn.dataset.delete)); }
       catch (e) { alert("Suppression impossible, vérifie ta connexion."); }
     };
