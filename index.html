@@ -109,7 +109,7 @@
       </select>
     </div>
   </header>
-  <main><div id="list"></div></main>
+  <main><div id="list"><div class="empty">Connexion…</div></div></main>
 </div>
 
 <button class="fab" id="fabBtn" aria-label="Ajouter une fiche">
@@ -205,38 +205,56 @@
   </div>
 </div>
 
-<script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import {
+  getFirestore, collection, doc, setDoc, deleteDoc, updateDoc, onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCj9zvC_U94BrjJBn3WC6BJHqYtwS3p6cI",
+  authDomain: "carnet-appart.firebaseapp.com",
+  projectId: "carnet-appart",
+  storageBucket: "carnet-appart.firebasestorage.app",
+  messagingSenderId: "827562857933",
+  appId: "1:827562857933:web:1962bf97cb45db6ef76084",
+  measurementId: "G-CPNHXSPXK7"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const colRef = collection(db, "fiches");
+
 const STATUSES = [
   { id: "a_voir", label: "À visiter", color: "#D9A441", ink: "#4A3A14" },
   { id: "visite", label: "Visité", color: "#8FA98C", ink: "#28331F" },
-  { id: "relance", label: "Relance", color: "#C98A5E", ink: "#3A230F" },
-  { id: "refuse", label: "Refusé", color: "#B0A99A", ink: "#39362E" },
+  { id: "relance", label: "Offre", color: "#C98A5E", ink: "#3A230F" },
+  { id: "refuse", label: "Abandon", color: "#B0A99A", ink: "#39362E" },
 ];
 const TYPES = [
   { id: "nue", label: "Location nue" },
   { id: "meublee", label: "Meublée" },
   { id: "coloc", label: "Colocation" },
 ];
-const STORE_KEY = "carnet_appart_items";
 const statusOf = id => STATUSES.find(s => s.id === id) || STATUSES[0];
 const typeOf = id => TYPES.find(t => t.id === id);
-const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
-function load() {
-  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; }
-  catch { return []; }
-}
-function save(items) {
-  localStorage.setItem(STORE_KEY, JSON.stringify(items));
-}
-
-let items = load();
+let items = [];
+let loaded = false;
 let filter = "tous";
 let sortBy = "recent";
 let currentPhoto = null;
 let currentStatus = "a_voir";
 let currentType = null;
 let editingId = null;
+
+onSnapshot(colRef, (snapshot) => {
+  loaded = true;
+  items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+  renderAll();
+}, (err) => {
+  console.error(err);
+  document.getElementById("list").innerHTML = `<div class="empty">Connexion à la base impossible.<br>Vérifie ta connexion internet.</div>`;
+});
 
 function escapeHtml(s) {
   return (s || "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
@@ -352,15 +370,15 @@ function renderList() {
   }).join("");
 
   el.querySelectorAll("[data-delete]").forEach(btn => {
-    btn.onclick = () => {
-      items = items.filter(i => i.id !== btn.dataset.delete);
-      save(items); renderAll();
+    btn.onclick = async () => {
+      try { await deleteDoc(doc(db, "fiches", btn.dataset.delete)); }
+      catch (e) { alert("Suppression impossible, vérifie ta connexion."); }
     };
   });
   el.querySelectorAll("[data-set-status]").forEach(btn => {
-    btn.onclick = () => {
-      items = items.map(i => i.id === btn.dataset.setStatus ? { ...i, statut: btn.dataset.status } : i);
-      save(items); renderAll();
+    btn.onclick = async () => {
+      try { await updateDoc(doc(db, "fiches", btn.dataset.setStatus), { statut: btn.dataset.status }); }
+      catch (e) { alert("Mise à jour impossible, vérifie ta connexion."); }
     };
   });
   el.querySelectorAll("[data-edit]").forEach(btn => {
@@ -508,9 +526,10 @@ document.getElementById("fileInput").onchange = async (e) => {
 
 ["fTitre"].forEach(id => document.getElementById(id).addEventListener("input", updateSaveBtn));
 
-document.getElementById("saveBtn").onclick = () => {
+document.getElementById("saveBtn").onclick = async () => {
   const titre = document.getElementById("fTitre").value.trim();
   if (!titre) return;
+  const btn = document.getElementById("saveBtn");
   const loyerMensuel = document.getElementById("fLoyerMensuel").value.trim();
   const charges = document.getElementById("fCharges").value.trim();
   const mensualite = document.getElementById("fMensualite").value.trim();
@@ -535,14 +554,21 @@ document.getElementById("saveBtn").onclick = () => {
     type: currentType,
     photo: currentPhoto,
   };
-  if (editingId) {
-    items = items.map(i => i.id === editingId ? { ...i, ...data } : i);
-  } else {
-    items = [{ id: uid(), createdAt: Date.now(), ...data }, ...items];
+  try {
+    btn.disabled = true;
+    if (editingId) {
+      await setDoc(doc(db, "fiches", editingId), data, { merge: true });
+    } else {
+      const newRef = doc(colRef);
+      await setDoc(newRef, { ...data, createdAt: Date.now() });
+    }
+    closeSheet();
+  } catch (e) {
+    console.error(e);
+    alert("Impossible d'enregistrer. Vérifie ta connexion internet.");
+  } finally {
+    btn.disabled = false;
   }
-  save(items);
-  closeSheet();
-  renderAll();
 };
 
 function openSheet(id) {
@@ -567,7 +593,6 @@ document.getElementById("closeBtn").onclick = closeSheet;
 document.getElementById("overlay").onclick = (e) => { if (e.target.id === "overlay") closeSheet(); };
 document.getElementById("sortSelect").onchange = (e) => { sortBy = e.target.value; renderList(); };
 
-renderAll();
 </script>
 </body>
 </html>
