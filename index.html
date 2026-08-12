@@ -225,6 +225,7 @@ const db = getFirestore(app);
 const colRef = collection(db, "fiches");
 
 const STATUSES = [
+  { id: "attente", label: "En attente", color: "#B8AFD6", ink: "#2E2A44" },
   { id: "a_voir", label: "À visiter", color: "#D9A441", ink: "#4A3A14" },
   { id: "visite", label: "Visité", color: "#8FA98C", ink: "#28331F" },
   { id: "relance", label: "Offre", color: "#C98A5E", ink: "#3A230F" },
